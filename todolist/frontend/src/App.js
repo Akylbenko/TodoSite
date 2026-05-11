@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = 'https://todo-backend-khi2.onrender.com';
+const API_URL = 'https://todo-backend-khi2.onrender.com/api';
 
 function App() {
   const [tasks, setTasks] = useState([]);
