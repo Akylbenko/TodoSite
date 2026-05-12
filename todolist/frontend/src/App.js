@@ -13,13 +13,13 @@ const CATEGORIES = [
 ];
 
 function App() {
-  const [tasks, setTasks]             = useState([]);
-  const [newTask, setNewTask]         = useState('');
-  const [newCategory, setNewCategory] = useState('other');
-  const [search, setSearch]           = useState('');
-  const [filterCat, setFilterCat]     = useState('all');
-  const [editingId, setEditingId]     = useState(null);
-  const [editingText, setEditingText] = useState('');
+  const [tasks, setTasks]               = useState([]);
+  const [newTask, setNewTask]           = useState('');
+  const [newCategory, setNewCategory]   = useState('other');
+  const [search, setSearch]             = useState('');
+  const [filterCat, setFilterCat]       = useState('all');
+  const [editingId, setEditingId]       = useState(null);
+  const [editingText, setEditingText]   = useState('');
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -50,7 +50,7 @@ function App() {
       setTasks([response.data, ...tasks]);
       setNewTask('');
     } catch (error) {
-      console.error('Ошибка добавления задачи:', error);
+      console.error('Ошибка добавления:', error);
     }
   };
 
@@ -94,75 +94,128 @@ function App() {
     }
   };
 
+  const completed = tasks.filter(t => t.completed).length;
+
   return (
     <div className="App">
-      <h1>📋 Мой TODO Лист</h1>
+      <h1>📋 мой todo лист</h1>
+      <p className="subtitle">{tasks.length} задач · {completed} выполнено</p>
 
-      <form onSubmit={addTask}>
-        <input
-          type="text"
-          value={newTask}
-          onChange={(e) => setNewTask(e.target.value)}
-          placeholder="Введи новую задачу..."
-        />
-        <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
-          {CATEGORIES.filter(c => c.value !== 'all').map(c => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-        <button type="submit">Добавить</button>
-      </form>
+      <div className="add-card">
+        <form onSubmit={addTask}>
+          <div className="add-row">
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              placeholder="Добавить новую задачу..."
+            />
+            <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
+              {CATEGORIES.filter(c => c.value !== 'all').map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            <button type="submit" className="btn-add">+ Добавить</button>
+          </div>
+        </form>
 
-      <div className="controls">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 Поиск..."
-        />
-        <div className="filter-buttons">
-          {CATEGORIES.map(c => (
-            <button
-              key={c.value}
-              className={filterCat === c.value ? 'active' : ''}
-              onClick={() => setFilterCat(c.value)}
-            >
-              {c.label}
-            </button>
-          ))}
+        <div className="divider" />
+
+        <div className="controls">
+          <div className="search-wrap">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск..."
+            />
+          </div>
+          <div className="filter-buttons">
+            {CATEGORIES.map(c => (
+              <button
+                key={c.value}
+                className={filterCat === c.value ? 'active' : ''}
+                onClick={() => setFilterCat(c.value)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <ul className="task-list">
+        {tasks.length === 0 && (
+          <div className="empty">Задач нет — самое время добавить!</div>
+        )}
         {tasks.map(task => (
           <li key={task.id} className={task.completed ? 'completed' : ''}>
-            <span onClick={() => toggleComplete(task)}>
-              {task.completed ? '✅' : '⭕'}
-            </span>
-            {editingId === task.id ? (
-              <>
+            <button
+              className={`check-btn ${task.completed ? 'checked' : ''}`}
+              onClick={() => toggleComplete(task)}
+              aria-label="Отметить выполненной"
+            >
+              {task.completed ? '✓' : ''}
+            </button>
+
+            <div className="task-body">
+              {editingId === task.id ? (
                 <input
+                  className="edit-input"
                   value={editingText}
                   onChange={(e) => setEditingText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && saveEdit(task)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit(task);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
                   autoFocus
                 />
-                <button onClick={() => saveEdit(task)}>💾</button>
-                <button onClick={() => setEditingId(null)}>✖️</button>
-              </>
-            ) : (
-              <>
-                <span className="task-title">{task.title}</span>
-                <span className="task-category">
-                  {CATEGORIES.find(c => c.value === task.category)?.label}
-                </span>
-                <button onClick={() => startEditing(task)}>✏️</button>
-                <button onClick={() => deleteTask(task.id)}>🗑️</button>
-              </>
-            )}
+              ) : (
+                <>
+                  <div className="task-title" onClick={() => toggleComplete(task)}>
+                    {task.title}
+                  </div>
+                  <span className={`task-category ${task.category}`}>
+                    {CATEGORIES.find(c => c.value === task.category)?.label}
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="task-actions">
+              {editingId === task.id ? (
+                <>
+                  <button className="icon-btn" onClick={() => saveEdit(task)} aria-label="Сохранить">💾</button>
+                  <button className="icon-btn" onClick={() => setEditingId(null)} aria-label="Отмена">✖</button>
+                </>
+              ) : (
+                <>
+                  <button className="icon-btn" onClick={() => startEditing(task)} aria-label="Редактировать">✏️</button>
+                  <button className="icon-btn danger" onClick={() => deleteTask(task.id)} aria-label="Удалить">🗑️</button>
+                </>
+              )}
+            </div>
           </li>
         ))}
       </ul>
+
+      {tasks.length > 0 && (
+        <div className="stats">
+          <div className="stat">
+            <div className="stat-num">{tasks.length}</div>
+            <div className="stat-label">всего</div>
+          </div>
+          <div className="stat">
+            <div className="stat-num">{completed}</div>
+            <div className="stat-label">выполнено</div>
+          </div>
+          <div className="stat">
+            <div className="stat-num">{tasks.length - completed}</div>
+            <div className="stat-label">осталось</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
