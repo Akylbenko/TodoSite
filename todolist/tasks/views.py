@@ -1,5 +1,4 @@
-from rest_framework import generics, status
-from rest_framework.response import Response
+from rest_framework import generics
 from .models import Task
 from .serializers import TaskSerializer
 
@@ -7,7 +6,7 @@ class TaskListView(generics.ListAPIView):
     serializer_class = TaskSerializer
 
     def get_queryset(self):
-        queryset = Task.objects.all().order_by('-created_at')
+        queryset = Task.objects.filter(parent=None).order_by('-created_at')
         category = self.request.query_params.get('category')
         search = self.request.query_params.get('search')
         if category and category != 'all':

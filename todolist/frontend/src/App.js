@@ -12,14 +12,146 @@ const CATEGORIES = [
   { value: 'other',    label: '📌 Другое' },
 ];
 
+function TaskItem({ task, onToggle, onDelete, onEdit, onAddSubtask }) {
+  const [expanded, setExpanded]       = useState(true);
+  const [editingId, setEditingId]     = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [addingSub, setAddingSub]     = useState(false);
+  const [subTitle, setSubTitle]       = useState('');
+
+  const startEditing = (t) => { setEditingId(t.id); setEditingText(t.title); };
+  const cancelEditing = () => setEditingId(null);
+
+  const handleAddSub = async (e) => {
+    e.preventDefault();
+    if (!subTitle.trim()) return;
+    await onAddSubtask(task.id, subTitle, task.category);
+    setSubTitle('');
+    setAddingSub(false);
+    setExpanded(true);
+  };
+
+  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+
+  return (
+    <li className={`task-item ${task.completed ? 'completed' : ''}`}>
+      <div className="task-row">
+        <button
+          className={`check-btn ${task.completed ? 'checked' : ''}`}
+          onClick={() => onToggle(task)}
+          aria-label="Отметить выполненной"
+        >
+          {task.completed ? '✓' : ''}
+        </button>
+
+        <div className="task-body">
+          {editingId === task.id ? (
+            <input
+              className="edit-input"
+              value={editingText}
+              onChange={(e) => setEditingText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { onEdit(task, editingText); cancelEditing(); }
+                if (e.key === 'Escape') cancelEditing();
+              }}
+              autoFocus
+            />
+          ) : (
+            <>
+              <div className="task-title" onClick={() => onToggle(task)}>{task.title}</div>
+              <span className={`task-category ${task.category}`}>
+                {CATEGORIES.find(c => c.value === task.category)?.label}
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="task-actions">
+          {editingId === task.id ? (
+            <>
+              <button className="icon-btn" onClick={() => { onEdit(task, editingText); cancelEditing(); }} aria-label="Сохранить">💾</button>
+              <button className="icon-btn" onClick={cancelEditing} aria-label="Отмена">✖</button>
+            </>
+          ) : (
+            <>
+              {hasSubtasks && (
+                <button className="icon-btn" onClick={() => setExpanded(!expanded)} aria-label="Свернуть/развернуть">
+                  {expanded ? '▾' : '▸'}
+                </button>
+              )}
+              <button className="icon-btn" onClick={() => setAddingSub(!addingSub)} aria-label="Добавить подзадачу">＋</button>
+              <button className="icon-btn" onClick={() => startEditing(task)} aria-label="Редактировать">✏️</button>
+              <button className="icon-btn danger" onClick={() => onDelete(task.id)} aria-label="Удалить">🗑️</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {addingSub && (
+        <form className="subtask-add-row" onSubmit={handleAddSub}>
+          <input
+            type="text"
+            value={subTitle}
+            onChange={(e) => setSubTitle(e.target.value)}
+            placeholder="Текст подзадачи..."
+            autoFocus
+          />
+          <button type="submit" className="btn-add-sub">Добавить</button>
+          <button type="button" className="icon-btn" onClick={() => setAddingSub(false)}>✖</button>
+        </form>
+      )}
+
+      {hasSubtasks && expanded && (
+        <ul className="subtask-list">
+          {task.subtasks.map(sub => (
+            <li key={sub.id} className={`subtask-item ${sub.completed ? 'completed' : ''}`}>
+              <button
+                className={`check-btn small ${sub.completed ? 'checked' : ''}`}
+                onClick={() => onToggle(sub)}
+              >
+                {sub.completed ? '✓' : ''}
+              </button>
+              {editingId === sub.id ? (
+                <input
+                  className="edit-input"
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { onEdit(sub, editingText); cancelEditing(); }
+                    if (e.key === 'Escape') cancelEditing();
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <span className="task-title" onClick={() => onToggle(sub)}>{sub.title}</span>
+              )}
+              <div className="task-actions">
+                {editingId === sub.id ? (
+                  <>
+                    <button className="icon-btn" onClick={() => { onEdit(sub, editingText); cancelEditing(); }}>💾</button>
+                    <button className="icon-btn" onClick={cancelEditing}>✖</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="icon-btn" onClick={() => startEditing(sub)}>✏️</button>
+                    <button className="icon-btn danger" onClick={() => onDelete(sub.id)}>🗑️</button>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 function App() {
-  const [tasks, setTasks]               = useState([]);
-  const [newTask, setNewTask]           = useState('');
-  const [newCategory, setNewCategory]   = useState('other');
-  const [search, setSearch]             = useState('');
-  const [filterCat, setFilterCat]       = useState('all');
-  const [editingId, setEditingId]       = useState(null);
-  const [editingText, setEditingText]   = useState('');
+  const [tasks, setTasks]             = useState([]);
+  const [newTask, setNewTask]         = useState('');
+  const [newCategory, setNewCategory] = useState('other');
+  const [search, setSearch]           = useState('');
+  const [filterCat, setFilterCat]     = useState('all');
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -29,7 +161,7 @@ function App() {
       const response = await axios.get(`${API_URL}/tasks/`, { params });
       setTasks(response.data);
     } catch (error) {
-      console.error('Ошибка загрузки задач:', error);
+      console.error('Ошибка загрузки:', error);
     }
   }, [search, filterCat]);
 
@@ -43,9 +175,7 @@ function App() {
     if (!newTask.trim()) return;
     try {
       const response = await axios.post(`${API_URL}/tasks/create/`, {
-        title: newTask,
-        completed: false,
-        category: newCategory,
+        title: newTask, completed: false, category: newCategory,
       });
       setTasks([response.data, ...tasks]);
       setNewTask('');
@@ -54,13 +184,23 @@ function App() {
     }
   };
 
+  const addSubtask = async (parentId, title, category) => {
+    try {
+      await axios.post(`${API_URL}/tasks/create/`, {
+        title, completed: false, category, parent: parentId,
+      });
+      fetchTasks();
+    } catch (error) {
+      console.error('Ошибка добавления подзадачи:', error);
+    }
+  };
+
   const toggleComplete = async (task) => {
     try {
       const response = await axios.put(`${API_URL}/tasks/update/${task.id}/`, {
-        ...task,
-        completed: !task.completed,
+        ...task, completed: !task.completed,
       });
-      setTasks(tasks.map(t => t.id === task.id ? response.data : t));
+      fetchTasks();
     } catch (error) {
       console.error('Ошибка обновления:', error);
     }
@@ -69,26 +209,19 @@ function App() {
   const deleteTask = async (id) => {
     try {
       await axios.delete(`${API_URL}/tasks/delete/${id}/`);
-      setTasks(tasks.filter(t => t.id !== id));
+      fetchTasks();
     } catch (error) {
       console.error('Ошибка удаления:', error);
     }
   };
 
-  const startEditing = (task) => {
-    setEditingId(task.id);
-    setEditingText(task.title);
-  };
-
-  const saveEdit = async (task) => {
-    if (!editingText.trim()) return;
+  const editTask = async (task, newTitle) => {
+    if (!newTitle.trim()) return;
     try {
-      const response = await axios.put(`${API_URL}/tasks/update/${task.id}/`, {
-        ...task,
-        title: editingText,
+      await axios.put(`${API_URL}/tasks/update/${task.id}/`, {
+        ...task, title: newTitle,
       });
-      setTasks(tasks.map(t => t.id === task.id ? response.data : t));
-      setEditingId(null);
+      fetchTasks();
     } catch (error) {
       console.error('Ошибка редактирования:', error);
     }
@@ -150,53 +283,14 @@ function App() {
           <div className="empty">Задач нет — самое время добавить!</div>
         )}
         {tasks.map(task => (
-          <li key={task.id} className={task.completed ? 'completed' : ''}>
-            <button
-              className={`check-btn ${task.completed ? 'checked' : ''}`}
-              onClick={() => toggleComplete(task)}
-              aria-label="Отметить выполненной"
-            >
-              {task.completed ? '✓' : ''}
-            </button>
-
-            <div className="task-body">
-              {editingId === task.id ? (
-                <input
-                  className="edit-input"
-                  value={editingText}
-                  onChange={(e) => setEditingText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(task);
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <>
-                  <div className="task-title" onClick={() => toggleComplete(task)}>
-                    {task.title}
-                  </div>
-                  <span className={`task-category ${task.category}`}>
-                    {CATEGORIES.find(c => c.value === task.category)?.label}
-                  </span>
-                </>
-              )}
-            </div>
-
-            <div className="task-actions">
-              {editingId === task.id ? (
-                <>
-                  <button className="icon-btn" onClick={() => saveEdit(task)} aria-label="Сохранить">💾</button>
-                  <button className="icon-btn" onClick={() => setEditingId(null)} aria-label="Отмена">✖</button>
-                </>
-              ) : (
-                <>
-                  <button className="icon-btn" onClick={() => startEditing(task)} aria-label="Редактировать">✏️</button>
-                  <button className="icon-btn danger" onClick={() => deleteTask(task.id)} aria-label="Удалить">🗑️</button>
-                </>
-              )}
-            </div>
-          </li>
+          <TaskItem
+            key={task.id}
+            task={task}
+            onToggle={toggleComplete}
+            onDelete={deleteTask}
+            onEdit={editTask}
+            onAddSubtask={addSubtask}
+          />
         ))}
       </ul>
 

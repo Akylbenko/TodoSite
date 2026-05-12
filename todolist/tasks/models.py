@@ -11,6 +11,13 @@ class Task(models.Model):
     title = models.CharField(max_length=200)
     completed = models.BooleanField(default=False)
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='other')
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='subtasks'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
